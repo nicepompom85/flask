@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity Flask Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons for premium look -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Tailwind or custom CSS? Custom CSS as per instructions (Vanilla CSS for max control and aesthetics) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="background-decorations">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+        <div class="circle circle-3"></div>
+    </div>
+
+    <main class="dashboard-container">
+        <!-- Dashboard Header -->
+        <header class="dashboard-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i data-lucide="layers"></i>
+                </div>
+                <div>
+                    <h1>Antigravity Dashboard</h1>
+                    <p class="subtitle">Python Flask Modern Task Manager</p>
+                </div>
+            </div>
+            <div class="status-badge" id="server-status">
+                <span class="pulse-indicator"></span>
+                <span>Active on Port 19191</span>
+            </div>
+        </header>
+
+        <!-- Stats Overview Cards -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="stat-label">Total Tasks</span>
+                    <span class="stat-val" id="total-count">0</span>
+                </div>
+                <div class="stat-icon blue">
+                    <i data-lucide="list-todo"></i>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="stat-label">Completed</span>
+                    <span class="stat-val" id="completed-count">0</span>
+                </div>
+                <div class="stat-icon green">
+                    <i data-lucide="check-circle-2"></i>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="stat-label">Completion Rate</span>
+                    <span class="stat-val" id="completion-rate">0%</span>
+                </div>
+                <div class="stat-icon purple">
+                    <i data-lucide="trending-up"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Workspace: Add Task & Task List -->
+        <section class="workspace-card">
+            <!-- Add Task Form -->
+            <form id="add-task-form" class="task-input-wrapper">
+                <div class="input-container">
+                    <i data-lucide="plus-circle" class="input-icon"></i>
+                    <input type="text" id="task-title" placeholder="新增一個待辦事項..." required autocomplete="off">
+                </div>
+                <button type="submit" class="btn-primary">
+                    <span>新增任務</span>
+                    <i data-lucide="arrow-right"></i>
+                </button>
+            </form>
+
+            <!-- Task List Container -->
+            <div class="task-list-section">
+                <div class="list-header">
+                    <h2>待辦事項清單</h2>
+                    <button id="refresh-btn" class="btn-icon" title="重新整理">
+                        <i data-lucide="rotate-cw"></i>
+                    </button>
+                </div>
+                
+                <!-- Loading State -->
+                <div id="loading-state" class="loading-state">
+                    <div class="spinner"></div>
+                    <p>正在載入資料...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="empty-state hidden">
+                    <div class="empty-icon">
+                        <i data-lucide="clipboard-list"></i>
+                    </div>
+                    <h3>目前沒有任何任務</h3>
+                    <p>請在上方輸入欄新增任務，開始規劃您的一天！</p>
+                </div>
+
+                <!-- Tasks List -->
+                <ul id="tasks-list" class="tasks-list">
+                    <!-- Dynamic rendering in JS -->
+                </ul>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="dashboard-footer-info">
+            <p>Built with Flask & Vanilla CSS Glassmorphism • Running on <code class="port-code">19191</code></p>
+            <div class="tech-tags">
+                <span class="tag">Python 3.12</span>
+                <span class="tag">Flask Backend</span>
+                <span class="tag">Pytest Checked</span>
+            </div>
+        </footer>
+    </main>
+
+    <!-- App JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
