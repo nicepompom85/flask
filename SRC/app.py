@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # S3 Configuration
 S3_BUCKET = "ckc101-23"
-S3_REGION = os.environ.get('AWS_DEFAULT_REGION', 'ap-east-2')
+S3_REGION = "ap-east-2"  # The bucket is located in Hong Kong region
 
 def get_s3_client():
     """
