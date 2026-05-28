@@ -1,7 +1,22 @@
 import os
-from flask import Flask, jsonify, request, render_template
+import boto3
+from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
+from flask import Flask, jsonify, request, render_template, redirect
 
 app = Flask(__name__)
+
+# S3 Configuration
+S3_BUCKET = "ckc101-23"
+
+def get_s3_client():
+    """
+    Initialize and return a boto3 S3 client.
+    Rely on boto3's default credential provider chain:
+    1. Env variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+    2. Shared credentials file (~/.aws/credentials)
+    3. IAM Role on EC2 (Instance Profile)
+    """
+    return boto3.client('s3')
 
 # In-memory storage for tasks
 tasks = [
@@ -47,6 +62,138 @@ def feature2():
         message="要找下午上班的公司 💼",
         icon="briefcase"
     )
+
+@app.route('/feature3')
+def feature3():
+    """Feature 3 page: S3 File Manager."""
+    return render_template('s3_manager.html')
+
+@app.route('/api/s3/files', methods=['GET'])
+def list_s3_files():
+    """List all objects inside the S3 bucket."""
+    try:
+        s3 = get_s3_client()
+        response = s3.list_objects_v2(Bucket=S3_BUCKET)
+        files = []
+        if 'Contents' in response:
+            for obj in response['Contents']:
+                files.append({
+                    'key': obj['Key'],
+                    'size': obj['Size'],
+                    'last_modified': obj['LastModified'].isoformat()
+                })
+        return jsonify(files)
+    except (NoCredentialsError, PartialCredentialsError) as e:
+        return jsonify({
+            "error": "Credentials missing",
+            "error_type": type(e).__name__,
+            "message": "AWS credentials not configured. Please configure them locally or run in EC2 with an IAM Role."
+        }), 403
+    except ClientError as e:
+        return jsonify({
+            "error": "AWS client error",
+            "error_type": "ClientError",
+            "message": str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            "error": "Internal server error",
+            "error_type": type(e).__name__,
+            "message": str(e)
+        }), 500
+
+@app.route('/api/s3/upload', methods=['POST'])
+def upload_s3_file():
+    """Upload a file directly to S3."""
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part in request"}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+        
+    try:
+        s3 = get_s3_client()
+        s3.upload_fileobj(file, S3_BUCKET, file.filename)
+        return jsonify({"success": True, "message": f"File '{file.filename}' uploaded successfully."}), 201
+    except (NoCredentialsError, PartialCredentialsError) as e:
+        return jsonify({
+            "error": "Credentials missing",
+            "error_type": type(e).__name__,
+            "message": "AWS credentials not configured."
+        }), 403
+    except ClientError as e:
+        return jsonify({
+            "error": "AWS client error",
+            "error_type": "ClientError",
+            "message": str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            "error": "Internal server error",
+            "error_type": type(e).__name__,
+            "message": str(e)
+        }), 500
+
+@app.route('/api/s3/download/<path:filename>', methods=['GET'])
+def download_s3_file(filename):
+    """Generate a secure presigned URL and redirect the client."""
+    try:
+        s3 = get_s3_client()
+        presigned_url = s3.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': S3_BUCKET,
+                'Key': filename,
+                'ResponseContentDisposition': f'attachment; filename="{filename}"'
+            },
+            ExpiresIn=3600
+        )
+        return redirect(presigned_url)
+    except (NoCredentialsError, PartialCredentialsError) as e:
+        return jsonify({
+            "error": "Credentials missing",
+            "error_type": type(e).__name__,
+            "message": "AWS credentials not configured."
+        }), 403
+    except ClientError as e:
+        return jsonify({
+            "error": "AWS client error",
+            "error_type": "ClientError",
+            "message": str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            "error": "Internal server error",
+            "error_type": type(e).__name__,
+            "message": str(e)
+        }), 500
+
+@app.route('/api/s3/delete/<path:filename>', methods=['DELETE'])
+def delete_s3_file(filename):
+    """Delete a file from S3."""
+    try:
+        s3 = get_s3_client()
+        s3.delete_object(Bucket=S3_BUCKET, Key=filename)
+        return jsonify({"success": True, "message": f"File '{filename}' deleted successfully."})
+    except (NoCredentialsError, PartialCredentialsError) as e:
+        return jsonify({
+            "error": "Credentials missing",
+            "error_type": type(e).__name__,
+            "message": "AWS credentials not configured."
+        }), 403
+    except ClientError as e:
+        return jsonify({
+            "error": "AWS client error",
+            "error_type": "ClientError",
+            "message": str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            "error": "Internal server error",
+            "error_type": type(e).__name__,
+            "message": str(e)
+        }), 500
 
 
 @app.route('/api/tasks', methods=['GET'])
