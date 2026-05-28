@@ -7,16 +7,20 @@ app = Flask(__name__)
 
 # S3 Configuration
 S3_BUCKET = "ckc101-23"
+S3_REGION = os.environ.get('AWS_DEFAULT_REGION', 'ap-east-2')
 
 def get_s3_client():
     """
     Initialize and return a boto3 S3 client.
-    Rely on boto3's default credential provider chain:
-    1. Env variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-    2. Shared credentials file (~/.aws/credentials)
-    3. IAM Role on EC2 (Instance Profile)
+    Rely on boto3's default credential provider chain.
+    Configured with the correct region and Signature Version 4.
     """
-    return boto3.client('s3')
+    from botocore.client import Config
+    return boto3.client(
+        's3',
+        region_name=S3_REGION,
+        config=Config(signature_version='s3v4')
+    )
 
 # In-memory storage for tasks
 tasks = [
