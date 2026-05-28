@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S3 檔案管理 - Antigravity Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="background-decorations">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+        <div class="circle circle-3"></div>
+    </div>
+
+    <main class="dashboard-container">
+        <!-- Dashboard Header -->
+        <header class="dashboard-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i data-lucide="layers"></i>
+                </div>
+                <div>
+                    <h1>Antigravity Dashboard</h1>
+                    <p class="subtitle">Python Flask Modern Task Manager</p>
+                </div>
+            </div>
+            <div class="status-badge" id="server-status">
+                <span class="pulse-indicator"></span>
+                <span>Active on Port 19191</span>
+            </div>
+        </header>
+
+        <!-- Navigation Bar -->
+        <nav class="dashboard-nav">
+            <a href="/" class="nav-item"><i data-lucide="layout-dashboard"></i><span>儀表板</span></a>
+            <a href="/feature1" class="nav-item"><i data-lucide="trending-up"></i><span>早上看股票</span></a>
+            <a href="/feature2" class="nav-item"><i data-lucide="briefcase"></i><span>下午找公司</span></a>
+            <a href="/feature3" class="nav-item active"><i data-lucide="cloud-lightning"></i><span>S3 檔案管理</span></a>
+        </nav>
+
+        <!-- S3 Main Section -->
+        <section class="workspace-card">
+            <div class="s3-header">
+                <div class="s3-header-title">
+                    <i data-lucide="folder-open" style="color: var(--primary);"></i>
+                    <h2>S3 雲端檔案管理</h2>
+                    <span class="s3-bucket-badge">ckc101-23</span>
+                </div>
+                <div class="status-badge" id="s3-connection-status" style="background: rgba(107, 114, 128, 0.1); border-color: rgba(107, 114, 128, 0.2); color: var(--text-secondary);">
+                    <span class="pulse-indicator" style="background-color: var(--text-muted);"></span>
+                    <span>正在檢查 S3 連線...</span>
+                </div>
+            </div>
+
+            <!-- Upload Zone -->
+            <div class="upload-zone" id="drop-zone">
+                <input type="file" id="file-input" style="display: none;" multiple>
+                <div class="upload-icon">
+                    <i data-lucide="upload-cloud"></i>
+                </div>
+                <p class="upload-text">拖曳檔案至此處，或<span>點擊瀏覽檔案</span></p>
+                <p class="upload-status" id="upload-status-text">支援任意檔案格式上傳</p>
+            </div>
+
+            <!-- Files List Section -->
+            <div class="task-list-section">
+                <div class="list-header">
+                    <h2>儲存值檔案清單</h2>
+                    <button id="s3-refresh-btn" class="btn-icon" title="重新整理">
+                        <i data-lucide="rotate-cw"></i>
+                    </button>
+                </div>
+
+                <!-- Loading State -->
+                <div id="s3-loading-state" class="loading-state">
+                    <div class="spinner"></div>
+                    <p>正在從 S3 獲取檔案清單...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="s3-empty-state" class="empty-state hidden">
+                    <div class="empty-icon">
+                        <i data-lucide="package-open"></i>
+                    </div>
+                    <h3>此 Bucket 尚無任何檔案</h3>
+                    <p>嘗試在上方上傳一個檔案，或是確認 S3 Bucket 權限設定。</p>
+                </div>
+
+                <!-- Files Table wrapper -->
+                <div id="s3-table-container" class="s3-table-wrapper hidden">
+                    <table class="s3-table">
+                        <thead>
+                            <tr>
+                                <th>檔案名稱</th>
+                                <th>檔案大小</th>
+                                <th>最後修改時間</th>
+                                <th style="text-align: right; width: 100px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="s3-files-body">
+                            <!-- Dynamic rendering via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Credentials Error Card -->
+                <div id="credentials-error-card" class="diagnostics-card hidden">
+                    <div class="diagnostics-header">
+                        <i data-lucide="shield-alert"></i>
+                        <h3>AWS 認證金鑰未配置（本地開發模式）</h3>
+                    </div>
+                    <div class="diagnostics-body">
+                        <p>本專案<strong>沒有硬編碼任何 AWS 存取金鑰</strong>，以確保程式碼安全。這符合在生產環境（如 EC2）使用 <strong>IAM Role (Instance Profile)</strong> 的安全規範。</p>
+                        <p style="margin-top: 0.5rem;">在<strong>本地環境開發</strong>時，請使用以下任一安全的方法來配置 AWS 憑證以進行存取：</p>
+                        
+                        <h4 style="margin-top: 1rem; color: var(--text-primary);">方法 A：使用 AWS CLI 配置（推薦）</h4>
+                        <p>在您的終端機執行以下指令並輸入金鑰，boto3 將會自動讀取產生的設定檔：</p>
+                        <div class="code-block-wrapper">aws configure</div>
+                        
+                        <h4 style="margin-top: 1rem; color: var(--text-primary);">方法 B：配置環境變數</h4>
+                        <p>如果您是在 Windows PowerShell 中開發，可以設定臨時環境變數：</p>
+                        <div class="code-block-wrapper">$env:AWS_ACCESS_KEY_ID="您的AccessKey"
+$env:AWS_SECRET_ACCESS_KEY="您的SecretKey"
+$env:AWS_DEFAULT_REGION="ap-northeast-1"</div>
+
+                        <h4 style="margin-top: 1rem; color: var(--text-primary);">方法 C：Docker 容器運行掛載</h4>
+                        <p>如果您是在 Docker 內運行，可以將本地的 <code>.aws</code> 目錄掛載至容器中：</p>
+                        <div class="code-block-wrapper">docker run -p 19191:19191 -v ~/.aws:/root/.aws:ro flask-dashboard</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="dashboard-footer-info">
+            <p>Built with Flask & Boto3 Secure S3 Service • Running on <code class="port-code">19191</code></p>
+            <div class="tech-tags">
+                <span class="tag">Boto3 SDK</span>
+                <span class="tag">IAM Instance Profile Ready</span>
+                <span class="tag">No Hardcoded Keys</span>
+            </div>
+        </footer>
+    </main>
+
+    <!-- JavaScript to handle API interactions -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const s3FilesBody = document.getElementById('s3-files-body');
+            const s3LoadingState = document.getElementById('s3-loading-state');
+            const s3EmptyState = document.getElementById('s3-empty-state');
+            const s3TableContainer = document.getElementById('s3-table-container');
+            const credentialsCard = document.getElementById('credentials-error-card');
+            const s3ConnectionStatus = document.getElementById('s3-connection-status');
+            const s3RefreshBtn = document.getElementById('s3-refresh-btn');
+            const uploadStatusText = document.getElementById('upload-status-text');
+
+            // Format bytes helper
+            function formatBytes(bytes, decimals = 2) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const dm = decimals < 0 ? 0 : decimals;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+            }
+
+            // Get file icon based on name helper
+            function getFileIcon(filename) {
+                const ext = filename.split('.').pop().toLowerCase();
+                if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'].includes(ext)) {
+                    return 'image';
+                }
+                if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext)) {
+                    return 'archive';
+                }
+                if (['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md'].includes(ext)) {
+                    return 'file-text';
+                }
+                if (['js', 'py', 'html', 'css', 'json', 'sh', 'bat', 'yml', 'yaml'].includes(ext)) {
+                    return 'code';
+                }
+                return 'file';
+            }
+
+            // Update S3 Connection Badge state
+            function setConnectionBadge(status, text) {
+                const indicator = s3ConnectionStatus.querySelector('.pulse-indicator');
+                const label = s3ConnectionStatus.querySelector('span:not(.pulse-indicator)');
+                
+                label.textContent = text;
+                if (status === 'connected') {
+                    s3ConnectionStatus.style.background = 'rgba(16, 185, 129, 0.1)';
+                    s3ConnectionStatus.style.borderColor = 'var(--success-border)';
+                    s3ConnectionStatus.style.color = 'var(--success)';
+                    indicator.style.backgroundColor = 'var(--success)';
+                    indicator.style.display = 'block';
+                } else if (status === 'error') {
+                    s3ConnectionStatus.style.background = 'rgba(239, 68, 68, 0.1)';
+                    s3ConnectionStatus.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                    s3ConnectionStatus.style.color = 'var(--danger)';
+                    indicator.style.backgroundColor = 'var(--danger)';
+                    indicator.style.display = 'block';
+                } else {
+                    s3ConnectionStatus.style.background = 'rgba(107, 114, 128, 0.1)';
+                    s3ConnectionStatus.style.borderColor = 'rgba(107, 114, 128, 0.2)';
+                    s3ConnectionStatus.style.color = 'var(--text-secondary)';
+                    indicator.style.backgroundColor = 'var(--text-muted)';
+                    indicator.style.display = 'block';
+                }
+            }
+
+            // Fetch and render S3 files list
+            async function fetchS3Files() {
+                s3LoadingState.classList.remove('hidden');
+                s3EmptyState.classList.add('hidden');
+                s3TableContainer.classList.add('hidden');
+                credentialsCard.classList.add('hidden');
+                setConnectionBadge('checking', '正在檢查 S3 連線...');
+
+                try {
+                    const response = await fetch('/api/s3/files');
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        if (data.error_type === 'NoCredentialsError' || data.error_type === 'PartialCredentialsError') {
+                            setConnectionBadge('error', 'AWS 憑證未配置');
+                            s3LoadingState.classList.add('hidden');
+                            credentialsCard.classList.remove('hidden');
+                            return;
+                        }
+                        throw new Error(data.message || '無法獲取 S3 檔案清單');
+                    }
+
+                    // Success
+                    setConnectionBadge('connected', '已連線至 S3');
+                    renderS3Files(data);
+                } catch (error) {
+                    console.error('S3 Fetch Error:', error);
+                    setConnectionBadge('error', 'S3 連線失敗');
+                    s3LoadingState.classList.add('hidden');
+                    alert('獲取 S3 檔案失敗，請檢查網路連線或 AWS 權限設定。');
+                }
+            }
+
+            // Render S3 files to table
+            function renderS3Files(files) {
+                s3LoadingState.classList.add('hidden');
+                s3FilesBody.innerHTML = '';
+
+                if (!files || files.length === 0) {
+                    s3EmptyState.classList.remove('hidden');
+                    return;
+                }
+
+                s3TableContainer.classList.remove('hidden');
+
+                files.forEach(file => {
+                    const tr = document.createElement('tr');
+                    const iconName = getFileIcon(file.key);
+                    
+                    // Format dates
+                    let dateStr = '未知';
+                    if (file.last_modified) {
+                        const date = new Date(file.last_modified);
+                        dateStr = date.toLocaleString('zh-TW', { hour12: false });
+                    }
+
+                    tr.innerHTML = `
+                        <td>
+                            <div class="file-name-cell">
+                                <div class="file-icon ${iconName}">
+                                    <i data-lucide="${iconName}"></i>
+                                </div>
+                                <span>${escapeHtml(file.key)}</span>
+                            </div>
+                        </td>
+                        <td>${formatBytes(file.size)}</td>
+                        <td>${dateStr}</td>
+                        <td style="text-align: right;">
+                            <a href="/api/s3/download/${encodeURIComponent(file.key)}" class="btn-table-action download" title="下載檔案">
+                                <i data-lucide="download"></i>
+                            </a>
+                            <button class="btn-table-action delete" data-key="${escapeHtml(file.key)}" title="刪除檔案">
+                                <i data-lucide="trash-2"></i>
+                            </button>
+                        </td>
+                    `;
+
+                    // Add Delete Event Listener
+                    const deleteBtn = tr.querySelector('.delete');
+                    deleteBtn.addEventListener('click', (e) => {
+                        const key = e.currentTarget.getAttribute('data-key');
+                        deleteS3File(key);
+                    });
+
+                    s3FilesBody.appendChild(tr);
+                });
+
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }
+
+            // Escape HTML helper
+            function escapeHtml(str) {
+                return str.replace(/&/g, "&amp;")
+                          .replace(/</g, "&lt;")
+                          .replace(/>/g, "&gt;")
+                          .replace(/"/g, "&quot;")
+                          .replace(/'/g, "&#039;");
+            }
+
+            // Delete a file from S3
+            async function deleteS3File(key) {
+                if (!confirm(`您確定要永久刪除檔案 "${key}" 嗎？`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/s3/delete/${encodeURIComponent(key)}`, {
+                        method: 'DELETE'
+                    });
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.message || '刪除失敗');
+                    }
+
+                    await fetchS3Files();
+                } catch (error) {
+                    console.error('Delete S3 File error:', error);
+                    alert(`刪除檔案失敗: ${error.message}`);
+                }
+            }
+
+            // Upload a file to S3
+            async function uploadFile(file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                uploadStatusText.textContent = `正在上傳 "${file.name}"...`;
+                dropZone.style.pointerEvents = 'none';
+                dropZone.style.opacity = '0.6';
+
+                try {
+                    const response = await fetch('/api/s3/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.message || '上傳失敗');
+                    }
+
+                    uploadStatusText.innerHTML = `<span style="color: var(--success);">"${file.name}" 上傳成功！</span>`;
+                    setTimeout(() => {
+                        uploadStatusText.textContent = '支援任意檔案格式上傳';
+                    }, 3000);
+                    
+                    await fetchS3Files();
+                } catch (error) {
+                    console.error('Upload File error:', error);
+                    uploadStatusText.innerHTML = `<span style="color: var(--danger);">上傳失敗: ${error.message}</span>`;
+                    setTimeout(() => {
+                        uploadStatusText.textContent = '支援任意檔案格式上傳';
+                    }, 4000);
+                } finally {
+                    dropZone.style.pointerEvents = 'auto';
+                    dropZone.style.opacity = '1';
+                }
+            }
+
+            // Drag & Drop event handlers
+            dropZone.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    // Upload the first selected file
+                    uploadFile(e.target.files[0]);
+                }
+            });
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    uploadFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            // Refresh button
+            s3RefreshBtn.addEventListener('click', fetchS3Files);
+
+            // Initial load
+            fetchS3Files();
+            
+            // Render basic icons initially
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        });
+    </script>
+</body>
+</html>
