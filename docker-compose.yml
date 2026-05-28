@@ -1,0 +1,11 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flask-dashboard
+    ports:
+      - "19191:19191"
+    environment:
+      - PORT=19191
+    restart: unless-stopped
