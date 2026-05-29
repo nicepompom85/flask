@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>燒機測試 - Antigravity Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="background-decorations">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+        <div class="circle circle-3"></div>
+    </div>
+
+    <!-- SVG Gradients for gauges -->
+    <svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
+        <linearGradient id="cpu-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ef4444" />
+            <stop offset="100%" stop-color="#f97316" />
+        </linearGradient>
+        <linearGradient id="ram-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#3b82f6" />
+            <stop offset="100%" stop-color="#a855f7" />
+        </linearGradient>
+    </svg>
+
+    <main class="dashboard-container">
+        <!-- Dashboard Header -->
+        <header class="dashboard-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i data-lucide="layers"></i>
+                </div>
+                <div>
+                    <h1>Antigravity Dashboard</h1>
+                    <p class="subtitle">Python Flask Modern Task Manager</p>
+                </div>
+            </div>
+            <div class="status-badge" id="server-status">
+                <span class="pulse-indicator"></span>
+                <span>Active on Port 19191</span>
+            </div>
+        </header>
+
+        <!-- Navigation Bar -->
+        <nav class="dashboard-nav">
+            <a href="/" class="nav-item"><i data-lucide="layout-dashboard"></i><span>儀表板</span></a>
+            <a href="/feature1" class="nav-item"><i data-lucide="trending-up"></i><span>早上看股票</span></a>
+            <a href="/feature2" class="nav-item"><i data-lucide="briefcase"></i><span>下午找公司</span></a>
+            <a href="/feature3" class="nav-item"><i data-lucide="cloud-lightning"></i><span>S3 檔案管理</span></a>
+            <a href="/feature4" class="nav-item active"><i data-lucide="flame"></i><span>燒機測試</span></a>
+        </nav>
+
+        <!-- Stress Testing Section -->
+        <section class="workspace-card">
+            <div class="s3-header">
+                <div class="s3-header-title">
+                    <i data-lucide="cpu" style="color: var(--danger);"></i>
+                    <h2>系統硬體壓力測試</h2>
+                </div>
+                <div class="status-badge" id="stress-status-badge" style="background: rgba(107, 114, 128, 0.1); border-color: rgba(107, 114, 128, 0.2); color: var(--text-secondary);">
+                    <span class="pulse-indicator" style="background-color: var(--text-muted);"></span>
+                    <span id="stress-status-text">系統閒置中</span>
+                </div>
+            </div>
+
+            <!-- Warning Box -->
+            <div class="warning-box">
+                <i data-lucide="alert-triangle"></i>
+                <div class="warning-box-content">
+                    <h4>安全與效能警告</h4>
+                    <p>壓力測試會使 CPU 滿載產熱，並暫時分配大量的系統實體記憶體。請確保運行此程式的電腦散熱良好，切勿在商用或生產環境執行過度測試，以防系統過熱當機或觸發 OOM 自動重啟。</p>
+                </div>
+            </div>
+
+            <!-- Two Column Dashboard Layout -->
+            <div class="stress-dashboard" id="stress-dashboard-view">
+                <!-- Left Column: Controls -->
+                <div class="stress-form">
+                    <h3 style="font-family: var(--font-heading); font-size: 1.1rem; margin-bottom: 0.25rem;">測試參數配置</h3>
+                    
+                    <div class="form-group">
+                        <label for="cpu-cores">CPU 核心數量: <span id="cores-val">1</span></label>
+                        <input type="range" class="range-slider" id="cpu-cores" min="1" max="{{ max_cores }}" value="1">
+                        <p style="font-size: 0.75rem; color: var(--text-muted);">此系統最大核心數：{{ max_cores }} Cores</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ram-mb">記憶體 (RAM) 壓力大小: <span id="ram-val">256 MB</span></label>
+                        <input type="range" class="range-slider" id="ram-mb" min="128" max="{{ max_mem_mb }}" step="128" value="256">
+                        <p style="font-size: 0.75rem; color: var(--text-muted);">此系統可用記憶體大約：{{ total_mem_gb }} GB（測試上限設為 75% 避免當機）</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="duration">測試持續時間</label>
+                        <select class="select-stress" id="duration">
+                            <option value="10">10 秒（快速測試）</option>
+                            <option value="30">30 秒</option>
+                            <option value="60">60 秒 (1分鐘)</option>
+                            <option value="300">300 秒 (5分鐘)</option>
+                            <option value="600">600 秒 (10分鐘)</option>
+                        </select>
+                    </div>
+
+                    <button class="btn-stress-start" id="btn-toggle-stress">
+                        <i data-lucide="flame"></i>
+                        <span>開始壓力測試</span>
+                    </button>
+                </div>
+
+                <!-- Right Column: Gauges -->
+                <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                    <h3 style="font-family: var(--font-heading); font-size: 1.1rem; margin-bottom: 0.25rem;">硬體監控指標</h3>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%;">
+                        <!-- CPU Gauge -->
+                        <div class="gauge-card">
+                            <div class="gauge-title">
+                                <i data-lucide="cpu" style="width:16px; height:16px; color:#f97316;"></i>
+                                <span>CPU 使用率</span>
+                            </div>
+                            <div class="gauge-circle">
+                                <svg class="gauge-svg">
+                                    <circle class="gauge-track" cx="65" cy="65" r="55"></circle>
+                                    <circle class="gauge-fill cpu-color" id="cpu-fill" cx="65" cy="65" r="55"></circle>
+                                </svg>
+                                <span class="gauge-value" id="cpu-val-text">0%</span>
+                            </div>
+                            <span class="gauge-label" id="cpu-cores-text">核心閒置中</span>
+                        </div>
+
+                        <!-- RAM Gauge -->
+                        <div class="gauge-card">
+                            <div class="gauge-title">
+                                <i data-lucide="database" style="width:16px; height:16px; color:#3b82f6;"></i>
+                                <span>RAM 使用率</span>
+                            </div>
+                            <div class="gauge-circle">
+                                <svg class="gauge-svg">
+                                    <circle class="gauge-track" cx="65" cy="65" r="55"></circle>
+                                    <circle class="gauge-fill ram-color" id="ram-fill" cx="65" cy="65" r="55"></circle>
+                                </svg>
+                                <span class="gauge-value" id="ram-val-text">0%</span>
+                            </div>
+                            <span class="gauge-label" id="ram-bytes-text">0 / 0 GB</span>
+                        </div>
+                    </div>
+
+                    <!-- Test timer remaining -->
+                    <div id="remaining-time-container" style="background: rgba(15,23,42,0.3); border:1px solid var(--card-border); border-radius:var(--radius-sm); padding:0.75rem 1rem; display:flex; align-items:center; justify-content:space-between; display:none;">
+                        <span style="font-size:0.875rem; color:var(--text-secondary);">測試倒數計時：</span>
+                        <span id="countdown-text" style="font-family:monospace; font-size:1.1rem; font-weight:700; color:var(--danger);">00:00</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="dashboard-footer-info">
+            <p>Built with Flask & Psutil Multiprocessing Stress System • Running on <code class="port-code">19191</code></p>
+            <div class="tech-tags">
+                <span class="tag">Daemon Processes</span>
+                <span class="tag">Real-time Gauges</span>
+                <span class="tag">RAM Byte-Mapping</span>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // UI elements
+            const cpuSlider = document.getElementById('cpu-cores');
+            const coresVal = document.getElementById('cores-val');
+            const ramSlider = document.getElementById('ram-mb');
+            const ramVal = document.getElementById('ram-val');
+            const selectDuration = document.getElementById('duration');
+            const btnToggleStress = document.getElementById('btn-toggle-stress');
+            const stressDashboardView = document.getElementById('stress-dashboard-view');
+            
+            const stressStatusBadge = document.getElementById('stress-status-badge');
+            const stressStatusText = document.getElementById('stress-status-text');
+            const pulseIndicator = stressStatusBadge.querySelector('.pulse-indicator');
+            
+            const cpuFill = document.getElementById('cpu-fill');
+            const cpuValText = document.getElementById('cpu-val-text');
+            const cpuCoresText = document.getElementById('cpu-cores-text');
+            
+            const ramFill = document.getElementById('ram-fill');
+            const ramValText = document.getElementById('ram-val-text');
+            const ramBytesText = document.getElementById('ram-bytes-text');
+            
+            const remainingTimeContainer = document.getElementById('remaining-time-container');
+            const countdownText = document.getElementById('countdown-text');
+
+            // SVG circumference (2 * pi * r) where r = 55
+            const CIRCUMFERENCE = 2 * Math.PI * 55;
+            
+            // State
+            let isRunning = false;
+            let pollingTimer = null;
+
+            // Initialize sliders values
+            cpuSlider.addEventListener('input', () => {
+                coresVal.textContent = cpuSlider.value;
+            });
+
+            ramSlider.addEventListener('input', () => {
+                ramVal.textContent = `${ramSlider.value} MB`;
+            });
+
+            // Update gauge progress helper
+            function setGaugePercentage(fillElement, percent) {
+                const offset = CIRCUMFERENCE - (percent / 100) * CIRCUMFERENCE;
+                fillElement.style.strokeDashoffset = offset;
+            }
+
+            // Format time helper
+            function formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+
+            // Update UI based on stress status
+            function updateStressUI(statusData) {
+                // Update system metrics
+                const cpuPercent = statusData.cpu_usage;
+                const ramPercent = statusData.memory_usage;
+                
+                cpuValText.textContent = `${Math.round(cpuPercent)}%`;
+                ramValText.textContent = `${Math.round(ramPercent)}%`;
+                
+                setGaugePercentage(cpuFill, cpuPercent);
+                setGaugePercentage(ramFill, ramPercent);
+                
+                // Show memory text
+                ramBytesText.textContent = `${(statusData.memory_used / 1024).toFixed(1)} / ${(statusData.memory_total / 1024).toFixed(1)} GB`;
+
+                isRunning = statusData.active;
+                
+                if (isRunning) {
+                    // Update CPU cores text in gauge
+                    cpuCoresText.textContent = `核心燃燒中 (${statusData.cores} Cores)`;
+                    
+                    // Dashboard running animations
+                    stressDashboardView.classList.add('running');
+                    btnToggleStress.classList.add('running');
+                    btnToggleStress.querySelector('span').textContent = '停止燒機測試';
+                    btnToggleStress.querySelector('i').setAttribute('data-lucide', 'square');
+                    
+                    // Badge status
+                    stressStatusText.textContent = '壓力測試中...';
+                    stressStatusBadge.style.background = 'rgba(239, 68, 68, 0.1)';
+                    stressStatusBadge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                    stressStatusBadge.style.color = 'var(--danger)';
+                    pulseIndicator.style.backgroundColor = 'var(--danger)';
+                    pulseIndicator.style.display = 'block';
+
+                    // Countdown
+                    if (statusData.remaining_time !== null) {
+                        remainingTimeContainer.style.display = 'flex';
+                        countdownText.textContent = formatTime(Math.ceil(statusData.remaining_time));
+                    } else {
+                        remainingTimeContainer.style.display = 'none';
+                    }
+
+                    // Disable config inputs during run
+                    cpuSlider.disabled = true;
+                    ramSlider.disabled = true;
+                    selectDuration.disabled = true;
+                } else {
+                    cpuCoresText.textContent = '核心閒置中';
+                    
+                    // Remove running animations
+                    stressDashboardView.classList.remove('running');
+                    btnToggleStress.classList.remove('running');
+                    btnToggleStress.querySelector('span').textContent = '開始壓力測試';
+                    btnToggleStress.querySelector('i').setAttribute('data-lucide', 'flame');
+                    
+                    // Badge status
+                    stressStatusText.textContent = '系統閒置中';
+                    stressStatusBadge.style.background = 'rgba(107, 114, 128, 0.1)';
+                    stressStatusBadge.style.borderColor = 'rgba(107, 114, 128, 0.2)';
+                    stressStatusBadge.style.color = 'var(--text-secondary)';
+                    pulseIndicator.style.backgroundColor = 'var(--text-muted)';
+                    pulseIndicator.style.display = 'block';
+
+                    remainingTimeContainer.style.display = 'none';
+
+                    // Re-enable config inputs
+                    cpuSlider.disabled = false;
+                    ramSlider.disabled = false;
+                    selectDuration.disabled = false;
+                }
+
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }
+
+            // Poll status endpoint
+            async function pollStatus() {
+                try {
+                    const response = await fetch('/api/stress/status');
+                    if (!response.ok) throw new Error('Failed to fetch status');
+                    const data = await response.json();
+                    updateStressUI(data);
+                } catch (error) {
+                    console.error('Error polling status:', error);
+                }
+            }
+
+            // Start stress test
+            async function startStress() {
+                const cores = parseInt(cpuSlider.value);
+                const ram_mb = parseInt(ramSlider.value);
+                const duration = parseInt(selectDuration.value);
+
+                btnToggleStress.disabled = true;
+                try {
+                    const response = await fetch('/api/stress/start', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cores, ram_mb, duration })
+                    });
+                    
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.error || '啟動失敗');
+                    }
+                    
+                    await pollStatus();
+                } catch (error) {
+                    alert(`啟動壓力測試失敗: ${error.message}`);
+                    console.error(error);
+                } finally {
+                    btnToggleStress.disabled = false;
+                }
+            }
+
+            // Stop stress test
+            async function stopStress() {
+                btnToggleStress.disabled = true;
+                try {
+                    const response = await fetch('/api/stress/stop', {
+                        method: 'POST'
+                    });
+                    
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.error || '停止失敗');
+                    }
+                    
+                    await pollStatus();
+                } catch (error) {
+                    alert(`停止壓力測試失敗: ${error.message}`);
+                    console.error(error);
+                } finally {
+                    btnToggleStress.disabled = false;
+                }
+            }
+
+            // Button click toggles stress test
+            btnToggleStress.addEventListener('click', () => {
+                if (isRunning) {
+                    stopStress();
+                } else {
+                    if (confirm('您確認要啟動系統硬體壓力測試嗎？請確認散熱是否正常。')) {
+                        startStress();
+                    }
+                }
+            });
+
+            // Start polling every 1 second
+            pollStatus();
+            pollingTimer = setInterval(pollStatus, 1000);
+
+            // Cleanup timer on unload
+            window.addEventListener('beforeunload', () => {
+                if (pollingTimer) {
+                    clearInterval(pollingTimer);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -174,3 +174,54 @@ def test_delete_s3_file_success(mock_get_s3_client, client):
     assert response.get_json()['success'] is True
     mock_s3.delete_object.assert_called_once_with(Bucket='ckc101-23', Key='test.txt')
 
+
+def test_feature4_page(client):
+    """Test that the stress testing page loads successfully."""
+    response = client.get('/feature4')
+    assert response.status_code == 200
+    assert "系統硬體壓力測試".encode('utf-8') in response.data
+
+
+@patch('SRC.app.psutil')
+def test_api_stress_status(mock_psutil, client):
+    """Test retrieving stress test status."""
+    # Mock psutil memory and cpu calls
+    mock_mem = MagicMock()
+    mock_mem.percent = 45.2
+    mock_mem.used = 4096 * 1024 * 1024
+    mock_mem.total = 8192 * 1024 * 1024
+    mock_psutil.virtual_memory.return_value = mock_mem
+    mock_psutil.cpu_percent.return_value = 12.5
+    
+    response = client.get('/api/stress/status')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['active'] is False
+    assert data['cpu_usage'] == 12.5
+    assert data['memory_usage'] == 45.2
+
+
+@patch('SRC.app.start_stress_test')
+def test_api_start_stress(mock_start_stress, client):
+    """Test API to start stress test."""
+    mock_start_stress.return_value = (True, "Started")
+    
+    response = client.post('/api/stress/start', json={
+        "cores": 2,
+        "ram_mb": 256,
+        "duration": 10
+    })
+    assert response.status_code == 200
+    assert response.get_json()['success'] is True
+    mock_start_stress.assert_called_once_with(2, 256, 10)
+
+
+@patch('SRC.app.stop_stress_test')
+def test_api_stop_stress(mock_stop_stress, client):
+    """Test API to stop stress test."""
+    response = client.post('/api/stress/stop')
+    assert response.status_code == 200
+    assert response.get_json()['success'] is True
+    mock_stop_stress.assert_called_once()
+
+
